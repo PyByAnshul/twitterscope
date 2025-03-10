@@ -1,0 +1,86 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+
+<style>
+.progress{
+    display:none
+}
+</style>
+<div class="container mt-4">
+    <h1 class="mb-4">TweetScope</h1>
+
+    <!-- Cards for Matches Data -->
+    <div class="row">
+        <div class="col-md-4">
+            <div class="panel panel-default text-center">
+                <div class="panel-heading">Total Posts</div>
+                <div class="panel-body">
+                    <h3 class="panel-title">{{ total_posts }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+  
+
+    <!-- Form to Start Process -->
+    <div class="row mt-4">
+        <div class="container mt-4">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="panel panel-default">
+                        <div class="panel-heading">Fetch Posts By Link</div>
+                        <div class="panel-body">
+                            <form id="startProcessForm1" method="POST">
+                                <div class="form-group">
+                                    <label for="start_date">Post Link</label>
+                                    <input type="text" name="post_link" id="post_link" class="form-control" required>
+                                </div>
+                                <div class="progress" id="progressBar" style="display: none;" role="progressbar" aria-label="Animated striped example" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Start</button>
+                            </form>
+                            <script>
+                                document.getElementById('startProcessForm1').addEventListener('submit', function (event) {
+                                    event.preventDefault();
+                            
+                                    var postLink = document.getElementById('post_link').value;
+                                    if (!postLink) {
+                                        alert('Post Link is required.');
+                                        return;
+                                    }
+                            
+                                    document.getElementById('progressBar').style.display = 'block';
+                            
+                                    var xhr = new XMLHttpRequest();
+                                    xhr.open('POST', '{{ url_for("start_process") }}', true);
+                                    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                            
+                                    xhr.onload = function () {
+                                        document.getElementById('progressBar').style.display = 'none';
+                                        if (xhr.status >= 200 && xhr.status < 300) {
+                                            window.location.reload();
+                                        } else {
+                                            alert('Failed to start process: ' + xhr.statusText);
+                                        }
+                                    };
+                            
+                                    var formData = 'post_link=' + encodeURIComponent(postLink);
+                                    xhr.send(formData);
+                                });
+                            </script>
+                            
+
+                                                    </div>
+                    </div>
+                </div>
+
+            
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
