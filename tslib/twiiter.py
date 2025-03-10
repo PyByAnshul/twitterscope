@@ -2,12 +2,11 @@ import requests
 from tslib.utils import headers,url
 import json
 from globals import db
-
+import time
 import re
 
 def remove_links(content):
     return re.sub(r'https?://\S+|www\.\S+', '', content)
-
 
 
 def main(post_link):
@@ -66,27 +65,43 @@ def main(post_link):
         }))
     )
 
-    response = requests.get(url=url, headers=headers, params=params)
-    data = response.json()
+    attempt = 0
+    max_retries = 2
 
+    while attempt <= max_retries:
+        try:
+            start_time = time.time()
+            response = requests.get(url=url, headers=headers, params=params, timeout=20)
+            data = response.json()
+            break
+        except requests.exceptions.Timeout:
+            attempt += 1
+            if attempt > max_retries:
+                print(f"Request timed out after {max_retries} retries.")
+                return "Failed to fetch post"
+        except requests.exceptions.RequestException as e:
+            print(f"Request failed: {e}")
+            return "Failed to fetch post"
+
+    duration = time.time() - start_time
+    print(f"Request completed in {duration:.2f} seconds")
 
     tweet = data['data']['threaded_conversation_with_injections_v2']['instructions'][0]['entries'][0]['content']['itemContent']['tweet_results']['result']['legacy']
     
-    media_url=tweet.get('entities',{}).get('urls',[])
+    media_url = tweet.get('entities', {}).get('urls', [])
     media_url = [i.get('expanded_url') for i in media_url]
     
     media = tweet.get('extended_entities', {}).get('media', [{}])
     content_type = media[0].get('type', '') if not media_url else 'url'
-    img=[i.get('media_url_https') for i in media if i.get('media_url_https')]
+    img = [i.get('media_url_https') for i in media if i.get('media_url_https')]
     video = [i.get('video_info') for i in media if i.get('video_info')]
-    
 
     content = remove_links(tweet.get('full_text', ''))
     hashtags = tweet.get('entities', {}).get('hashtags', [])
     if hashtags:
-        hashtags = [i.get('text') for i in hashtags ]
+        hashtags = [i.get('text') for i in hashtags]
 
     print(img, content, hashtags, video)
-    db.posts.update_one({'post_id':post_id},{'$set':{'post_link': post_link,'content':content,'content_type':content_type,'hashtags':hashtags,'media':{'img':img,'video':video,'media_urls':media_url}}},upsert=True)
+    db.posts.update_one({'post_id': post_id}, {'$set': {'post_link': post_link, 'content': content, 'content_type': content_type, 'hashtags': hashtags, 'media': {'img': img, 'video': video, 'media_urls': media_url}}}, upsert=True)
 
     return "post saved"
