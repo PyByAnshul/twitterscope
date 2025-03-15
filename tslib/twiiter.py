@@ -85,7 +85,7 @@ def main(post_link):
 
     duration = time.time() - start_time
     print(f"Request completed in {duration:.2f} seconds")
-
+   
     tweet = data['data']['threaded_conversation_with_injections_v2']['instructions'][0]['entries'][0]['content']['itemContent']['tweet_results']['result']['legacy']
     
     media_url = tweet.get('entities', {}).get('urls', [])
@@ -94,7 +94,21 @@ def main(post_link):
     media = tweet.get('extended_entities', {}).get('media', [{}])
     content_type = media[0].get('type', '') if not media_url else 'url'
     img = [i.get('media_url_https') for i in media if i.get('media_url_https')]
-    video = [i.get('video_info') for i in media if i.get('video_info')]
+    video_all = [i.get('video_info') for i in media if i.get('video_info')]
+    horizontal_videos = []
+    vertical_videos = []
+
+    for video in video_all:
+        aspect_ratio = video.get("aspect_ratio", [])
+        if len(aspect_ratio) == 2:
+            width, height = aspect_ratio
+            if width > height:
+                horizontal_videos.extend(variant["url"] for variant in video["variants"] if variant["content_type"] == "video/mp4")
+            else:
+                vertical_videos.extend(variant["url"] for variant in video["variants"] if variant["content_type"] == "video/mp4")
+
+
+    video={'horizontal_videos':horizontal_videos,'vertical_videos':vertical_videos}
 
     content = remove_links(tweet.get('full_text', ''))
     hashtags = tweet.get('entities', {}).get('hashtags', [])
